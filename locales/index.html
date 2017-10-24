@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Translation CMS</title>
+  <!-- by Nicholas Neumann-Chun -->
+  <style>
+  #save {
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    position: fixed;
+    right: 10px;
+    top: 10px;
+  }
+  #save:focus {
+    outline: 0;
+  }
+  table {
+    border-collapse: collapse;
+    margin: auto;
+  }
+  th,
+  td {
+    border: 1px solid black;
+    padding: 4px;
+  }
+  td {
+    width: 33vw;
+    max-width: 33vw;
+  }
+  td:last-child {
+    padding: 0;
+  }
+  td > textarea {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+  }
+  </style>
+</head>
+
+<body>
+  <button id="save">Save</button>
+  <table>
+    <thead>
+      <tr>
+        <th>English</th>
+        <th>Japanese</th>
+      </tr>
+    </thead>
+    <tbody id="table">
+    </tbody>
+  </table>
+  <script>
+  'use strict';
+  const table = document.getElementById('table');
+  const saveButton = document.getElementById('save');
+
+  function getJson(path) {
+    return new Promise((resolve, reject) => {
+      let request = new XMLHttpRequest();
+      request.open('GET', path, true);
+      request.onload = function() {
+        if (request.status >= 200 && request.status < 400) {
+          resolve(JSON.parse(request.responseText));
+        } else {
+          reject('JSON file not found: ' + path);
+        }
+      };
+      request.onerror = function() {
+        reject('JSON fetch failed: ' + path);
+      };
+      request.send();
+    });
+  }
+
+  let en, ja;
+  getJson('en.json').then((enData) => {
+    en = enData;
+    return getJson('ja.json');
+  }).then((jaData) => {
+    ja = jaData;
+    init();
+  });
+
+  function init() {
+    for (let enEntry of Object.entries(en)) {
+      let tr = document.createElement('tr');
+      let id = enEntry[0];
+      tr.id = id;
+      let enTd = document.createElement('td');
+      let enText = enEntry[1];
+      enTd.textContent = enText;
+      tr.appendChild(enTd);
+
+      let jaTd = document.createElement('td');
+      let jaInput = document.createElement('textarea');
+      let jaText = ja[id];
+      if (jaText) {
+        jaInput.value = jaText;
+      } else {
+        jaInput.style.backgroundColor = 'orange';
+      }
+      jaTd.appendChild(jaInput);
+      tr.appendChild(jaTd);
+
+      table.appendChild(tr);
+    }
+
+    saveButton.addEventListener('click', () => {
+      let map = Array.from(table.querySelectorAll('tr')).reduce((map, tr) => {
+        let id = tr.id;
+        let jaText = tr.querySelector('textarea').value;
+        map[id] = jaText;
+        return map;
+      }, {});
+      let text = JSON.stringify(map);
+
+      let downloadEl = document.createElement('a');
+      downloadEl.setAttribute(
+        'href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+      downloadEl.setAttribute('download', 'ja.json');
+      downloadEl.setAttribute('target', '_blank');
+      downloadEl.style.display = 'none';
+      document.body.appendChild(downloadEl);
+      downloadEl.click();
+      document.body.removeChild(downloadEl);
+    });
+  }
+  </script>
+</body>
+
+</html>
